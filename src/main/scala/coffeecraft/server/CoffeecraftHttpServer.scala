@@ -6,7 +6,7 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorFlowMaterializer
 import akka.util.Timeout
-import coffeecraft.dao.CoffeeDao
+import coffeecraft.dao.CoffeeDaoRestInterface
 import coffeecraft.models._
 import spray.json._
 
@@ -31,29 +31,31 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
 
   val route =
     path("coffee" / IntNumber) { coffeeId: Int =>
-      get {
-        rejectEmptyResponse {
-          complete {
-            CoffeeDao.get(coffeeId)
-          }
-        }
-      } ~ delete {
+      (get & rejectEmptyResponse) {
         complete {
-          CoffeeDao.delete(coffeeId)
+          CoffeeDaoRestInterface.get(coffeeId)
         }
-      } ~ (put & entity(as[Coffee])) { newCoffee =>
+      } ~
+      delete {
         complete {
-          CoffeeDao.update(coffeeId, newCoffee)
+          CoffeeDaoRestInterface.delete(coffeeId)
+        }
+      } ~
+      (put & entity(as[Coffee])) { newCoffee =>
+        complete {
+          CoffeeDaoRestInterface.put(coffeeId, newCoffee)
         }
       }
-    } ~ path("coffee") {
+    } ~
+    path("coffee") {
       get {
         complete {
-          CoffeeDao.listAll()
+          CoffeeDaoRestInterface.getAll()
         }
-      } ~ (post & entity(as[Coffee])) { newCoffee =>
+      } ~
+      (post & entity(as[Coffee])) { newCoffee =>
         complete {
-          CoffeeDao.post(newCoffee)
+          CoffeeDaoRestInterface.post(newCoffee)
         }
       }
     }
