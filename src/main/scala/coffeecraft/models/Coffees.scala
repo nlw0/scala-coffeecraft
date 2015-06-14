@@ -2,11 +2,13 @@ package coffeecraft.models
 
 import slick.driver.H2Driver.api._
 
-case class Coffee(name: String, price: Double, id: Option[Int] = None)
+case class Coffee(name: String, price: Double, id: Option[CoffeeKey] = None) {
+  def updateId(newId: CoffeeKey) = Coffee(name, price, id = Some(newId))
+}
 
-class Coffees(tag: Tag) extends Table[Coffee](tag, "FOODS") {
+class Coffees(tag: Tag) extends Table[Coffee](tag, "COFFEES") {
   // Auto Increment the id primary key column
-  def id = column[Int]("ID", O.PrimaryKey, O.AutoInc)
+  def id = column[CoffeeKey]("ID", O.PrimaryKey, O.AutoInc)
 
   def name = column[String]("NAME")
 

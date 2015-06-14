@@ -17,7 +17,7 @@ case class Coisa(ss: String)
 
 trait MyMarshalling extends DefaultJsonProtocol with SprayJsonSupport {
   implicit val coisaFormat = jsonFormat1(Coisa)
-  implicit val foodFormat = jsonFormat3(Coffee)
+  implicit val coffeeFormat = jsonFormat3(Coffee)
 }
 
 
@@ -26,23 +26,34 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
   implicit val system = ActorSystem("my-system")
   implicit val materializer = ActorFlowMaterializer()
 
+
   implicit val timeout = Timeout(5 seconds) // needed for `?` below
 
   val route =
-    path("coffee" / IntNumber) { foodId: Int=>
+    path("coffee" / IntNumber) { coffeeId: Int =>
       get {
-        complete {
-          CoffeeDao.get(foodId)
+        rejectEmptyResponse {
+          complete {
+            CoffeeDao.get(coffeeId)
+          }
         }
       } ~ delete {
         complete {
-          CoffeeDao.delete(foodId)
+          CoffeeDao.delete(coffeeId)
+        }
+      } ~ (put & entity(as[Coffee])) { newCoffee =>
+        complete {
+          CoffeeDao.update(coffeeId, newCoffee)
         }
       }
     } ~ path("coffee") {
       get {
         complete {
           CoffeeDao.listAll()
+        }
+      } ~ (post & entity(as[Coffee])) { newCoffee =>
+        complete {
+          CoffeeDao.post(newCoffee)
         }
       }
     }

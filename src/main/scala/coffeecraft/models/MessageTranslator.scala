@@ -1,15 +1,17 @@
 package coffeecraft.models
 
-import coffeecraft.dao.{ListAll, Post, Delete, Get}
+import coffeecraft.dao._
 
 object MessageTranslator {
   def apply(input: String) = input.split(" ").toList match {
     case "POST" :: name :: price :: Nil =>
       Post(Coffee(name.trim, price.toFloat))
-    case "GET" :: name :: Nil =>
-      Get(name.toInt)
-    case "DEL" :: name :: Nil =>
-      Delete(name.toInt)
+    case "PUT" :: id :: name :: price :: Nil =>
+      Update(id.toInt, Coffee(name, price.toFloat))
+    case "GET" :: id :: Nil =>
+      Get(id.toInt)
+    case "DEL" :: id :: Nil =>
+      Delete(id.toInt)
     case "LIST" :: Nil =>
       ListAll
   }

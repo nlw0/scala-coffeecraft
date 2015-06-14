@@ -12,50 +12,62 @@ import scala.concurrent.duration._
 
 object CoffeeDao {
 
-  // import system.dispatcher
-
-  val foods = TableQuery[Coffees]
+  val coffees = TableQuery[Coffees]
 
   val db = Database.forConfig("h2mem1")
 
   val createTable = DBIO.seq(
-    foods.schema.create,
-    foods += Coffee("Milk", 2.0),
-    foods += Coffee("Coffee", 3.25),
-    foods += Coffee("Sparkling water", 1.20),
-    foods += Coffee("Jameson", 12.50)
+    coffees.schema.create,
+    coffees += Coffee("Milk", 2.0),
+    coffees += Coffee("Coffee", 3.25),
+    coffees += Coffee("Sparkling water", 1.20),
+    coffees += Coffee("Jameson", 12.50)
   )
 
   Await.result(db.run(createTable), Duration.Inf)
 
-  def get(id: Int) = run(Get(id)).mapTo[Vector[Coffee]]
+  def get(id: Int) =
+    run(Get(id)).mapTo[Vector[Coffee]] map (_.headOption)
 
   def delete(id: Int) = {
-    run(Delete(id)) map {
-      case deletedRowCount: Int if deletedRowCount > 0 =>
+    run(Delete(id)).mapTo[Int] map {
+      case affectedRowCount: Int if affectedRowCount > 0 =>
         HttpResponse(204)
       case _ =>
         HttpResponse(404)
     }
   }
 
+  def post(newCoffee: Coffee) = {
+    run(Post(newCoffee)).mapTo[Unit]
+    HttpResponse(204)
+  }
+
+  def update(id: Int, newCoffee: Coffee) =
+    run(Update(id, newCoffee)).mapTo[Int] map {
+      case affectedRowCount: Int if affectedRowCount > 0 =>
+        HttpResponse(204)
+      case _ =>
+        HttpResponse(404)
+    }
+
+  def listAll() = run(ListAll).mapTo[Vector[Coffee]]
+
   def run(cmd: Command) = {
     val query = cmd match {
-      case Post(newFood) =>
-        DBIO.seq(foods += newFood)
+      case Post(newCoffee) =>
+        DBIO.seq(coffees += newCoffee)
       case Get(id) =>
-        foods.filter(_.id === id).result
+        coffees.filter(_.id === id).result
       case Delete(id) =>
-        foods.filter(_.id === id).delete
+        coffees.filter(_.id === id).delete
+      case Update(id, newCoffeeData) =>
+        coffees filter (_.id === id) update newCoffeeData.updateId(id)
       case ListAll =>
-        foods.result
+        coffees.result
     }
     db.run(query)
   }
-
-  def post(newFood: Coffee) = run(Post(newFood)).mapTo[Unit]
-
-  def listAll() = run(ListAll).mapTo[Vector[Coffee]]
 }
 
 class CoffeeDaoHandler extends Actor {
@@ -71,7 +83,9 @@ case class Get(id: Int) extends Command
 
 case class Delete(id: Int) extends Command
 
-case class Post(newFood: Coffee) extends Command
+case class Post(newCoffee: Coffee) extends Command
+
+case class Update(id: Int, newCoffee: Coffee) extends Command
 
 case object ListAll extends Command
 
