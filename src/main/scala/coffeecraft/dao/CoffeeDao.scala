@@ -5,45 +5,44 @@ import akka.pattern.pipe
 import coffeecraft.models._
 import slick.driver.H2Driver.api._
 
-import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
-
 
 object CoffeeDao {
 
-  val coffees = TableQuery[Coffees]
+  val table = TableQuery[Coffees]
 
   val db = Database.forConfig("h2mem1")
 
-  val createTable = DBIO.seq(
-    coffees.schema.create,
-    coffees += Coffee("Milk", 2.0),
-    coffees += Coffee("Coffee", 3.25),
-    coffees += Coffee("Sparkling water", 1.20),
-    coffees += Coffee("Jameson", 12.50)
-  )
+  def insert(newCoffee: Coffee) = run(Insert(newCoffee)).mapTo[Unit]
 
-  Await.result(db.run(createTable), Duration.Inf)
+  def fetch(id: Int) = run(Fetch(id)).mapTo[Vector[Coffee]]
 
-  def run(cmd: Command) = {
-    val query = cmd match {
-      case Insert(newCoffee) =>
-        DBIO.seq(coffees += newCoffee)
-      case Fetch(id) =>
-        coffees.filter(_.id === id).result
-      case Remove(id) =>
-        coffees.filter(_.id === id).delete
-      case Update(id, newCoffeeData) =>
-        coffees filter (_.id === id) update newCoffeeData.updateId(id)
-      case FetchAll =>
-        coffees.result
-    }
-    db.run(query)
+  def remove(id: Int) = run(Remove(id)).mapTo[Int]
+
+  def update(id: Int, newCoffeeData: Coffee) = run(Update(id, newCoffeeData)).mapTo[Int]
+
+  def fetchAll() = run(FetchAll).mapTo[Vector[Coffee]]
+
+  def run(cmd: Command) = db.run(query(cmd))
+
+  private def query(cmd: Command) = cmd match {
+    case Insert(newCoffee: Coffee) =>
+      DBIO.seq(table += newCoffee)
+    case Fetch(id) =>
+      table.filter(_.id === id).result
+    case Remove(id) =>
+      table.filter(_.id === id).delete
+    case Update(id, newCoffeeData: Coffee) =>
+      table.filter(_.id === id).update(newCoffeeData.updateId(id))
+    case FetchAll =>
+      table.result
   }
 }
 
+
 class CoffeeDaoHandler extends Actor {
+
+  import context.dispatcher
+
   def receive = {
     case CommandMsg(cmd, who) =>
       pipe(CoffeeDao.run(cmd)) to who
@@ -56,9 +55,9 @@ case class Fetch(id: Int) extends Command
 
 case class Remove(id: Int) extends Command
 
-case class Insert(newCoffee: Coffee) extends Command
+case class Insert[C](newElement: C) extends Command
 
-case class Update(id: Int, newCoffee: Coffee) extends Command
+case class Update[C](id: Int, newElement: C) extends Command
 
 case object FetchAll extends Command
 
