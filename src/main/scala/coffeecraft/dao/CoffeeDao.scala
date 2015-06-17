@@ -32,7 +32,7 @@ object CoffeeDao {
     case Remove(id) =>
       table.filter(_.id === id).delete
     case Update(id, newCoffeeData: Coffee) =>
-      table.filter(_.id === id).update(newCoffeeData.updateId(id))
+      table.filter(_.id === id).update(newCoffeeData.updateID(id))
     case FetchAll =>
       table.result
   }

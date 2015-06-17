@@ -5,16 +5,30 @@ import coffeecraft.dao._
 object MessageTranslator {
   def apply(input: String) = input.split(" ").toList match {
     case "POST" :: name :: price :: Nil =>
-      Insert(Coffee(name.trim, price.toFloat))
+      (ToCoffee, Insert(Coffee(name.trim, price.toFloat)))
     case "PUT" :: id :: name :: price :: Nil =>
-      Update(id.toInt, Coffee(name, price.toFloat))
+      (ToCoffee, Update(id.toInt, Coffee(name, price.toFloat)))
     case "GET" :: id :: Nil =>
-      Fetch(id.toInt)
+      (ToCoffee, Fetch(id.toInt))
     case "DEL" :: id :: Nil =>
-      Remove(id.toInt)
+      (ToCoffee, Remove(id.toInt))
     case "LIST" :: Nil =>
-      FetchAll
+      (ToCoffee, FetchAll)
+
+    case "INVADD" :: uid :: cid :: Nil =>
+      (ToInventory, Insert(InventoryItem(uid.toInt, cid.toInt)))
+    case "INVLIST" :: Nil =>
+      (ToInventory, FetchAll)
+    case "INVDEL" :: uid :: cid :: Nil =>
+      (ToInventory, Insert(InventoryItem(uid.toInt, cid.toInt)))
+
     case _ =>
-      CommandError
+      (ToCoffee, CommandError)
   }
 }
+
+trait CmdDest
+
+case object ToCoffee extends CmdDest
+
+case object ToInventory extends CmdDest
