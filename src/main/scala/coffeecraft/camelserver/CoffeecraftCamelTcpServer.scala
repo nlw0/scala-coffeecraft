@@ -1,9 +1,12 @@
+/*
 package coffeecraft.camelserver
 
-import akka.actor.Props
+import akka.actor.{Actor, Props}
 import akka.camel.{CamelMessage, Consumer}
-import coffeecraft.dao.{CoffeeDaoHandler, CommandMsg, InventoryItemDaoHandler}
+import coffeecraft.dao.{InventoryDao, CoffeeDao}
 import coffeecraft.models._
+import akka.pattern.pipe
+
 
 class CoffeecraftCamelTcpServer extends Consumer {
   def endpointUri = "netty:tcp://localhost:60001?textline=true"
@@ -21,3 +24,23 @@ class CoffeecraftCamelTcpServer extends Consumer {
       }
   }
 }
+
+class CoffeeDaoHandler extends Actor {
+
+  import context.dispatcher
+
+  def receive = {
+    case CommandMsg(cmd, who) =>
+      pipe(CoffeeDao.run(cmd)) to who
+  }
+}
+
+class InventoryItemDaoHandler extends Actor {
+
+  import context.dispatcher
+
+  def receive = {
+    case CommandMsg(cmd, who) =>
+      pipe(InventoryDao.run(cmd)) to who
+  }
+}*/

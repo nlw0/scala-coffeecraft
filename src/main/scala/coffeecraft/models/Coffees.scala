@@ -3,11 +3,21 @@ package coffeecraft.models
 import slick.driver.H2Driver.api._
 
 
-case class Coffee(name: String, price: Double, id: Option[CoffeeKey] = None) {
+trait HasId {
+  type Id
+
+  def id: Option[Id]
+}
+
+abstract class HasIdColumn[E <: HasId](tag: Tag, name: String) extends Table[E](tag, name) {
+  def id = column[CoffeeKey]("ID", O.PrimaryKey, O.AutoInc)
+}
+
+case class Coffee(name: String, price: Double, id: Option[CoffeeKey] = None) extends HasId {
   def updateID(newID: CoffeeKey) = Coffee(name, price, id = Some(newID))
 }
 
-class Coffees(tag: Tag) extends Table[Coffee](tag, "COFFEES") {
+class Coffees(tag: Tag) extends HasIdColumn[Coffee](tag, "COFFEES") {
   def id = column[CoffeeKey]("ID", O.PrimaryKey, O.AutoInc)
 
   def name = column[String]("NAME")
@@ -18,9 +28,9 @@ class Coffees(tag: Tag) extends Table[Coffee](tag, "COFFEES") {
 }
 
 
-case class InventoryItem(userID: CoffeeKey, coffeID: CoffeeKey, id: Option[CoffeeKey] = None)
+case class Inventory(userID: CoffeeKey, coffeID: CoffeeKey, id: Option[CoffeeKey] = None) extends HasId
 
-class InventoryItems(tag: Tag) extends Table[InventoryItem](tag, "INVENTORY") {
+class Inventories(tag: Tag) extends HasIdColumn[Inventory](tag, "INVENTORY") {
   val coffees = TableQuery[Coffees]
 
   def id = column[CoffeeKey]("ID", O.PrimaryKey, O.AutoInc)
@@ -31,5 +41,8 @@ class InventoryItems(tag: Tag) extends Table[InventoryItem](tag, "INVENTORY") {
 
   def coffee = foreignKey("COFFEE_FK", coffeeID, coffees)(_.id)
 
-  def * = (userID, coffeeID, id.?) <>(InventoryItem.tupled, InventoryItem.unapply)
+  def * = (userID, coffeeID, id.?) <>(Inventory.tupled, Inventory.unapply)
 }
+
+
+// class Coffees(tag: Tag) extends Table[Coffee](tag, "COFFEES") with HasIdColumn[Coffee] {

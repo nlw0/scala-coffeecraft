@@ -13,7 +13,7 @@ import spray.json._
 
 trait MyMarshalling extends DefaultJsonProtocol with SprayJsonSupport {
   implicit val coffeeFormat = jsonFormat3(Coffee)
-  implicit val invFormat = jsonFormat3(InventoryItem)
+  implicit val invFormat = jsonFormat3(Inventory)
 }
 
 
@@ -72,7 +72,7 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
           InventoryDaoRestInterface.listAll()
         }
       } ~
-      (post & entity(as[InventoryItem])) { newCoffee =>
+      (post & entity(as[Inventory])) { newCoffee =>
         complete {
           InventoryDaoRestInterface.post(newCoffee)
         }

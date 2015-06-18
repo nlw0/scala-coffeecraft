@@ -1,66 +1,40 @@
 package coffeecraft.dao
 
-import akka.actor.{Actor, ActorRef}
-import akka.pattern.pipe
 import coffeecraft.models._
 import slick.driver.H2Driver.api._
 
+import scala.concurrent.Future
 
-object CoffeeDao {
 
-  val table = TableQuery[Coffees]
+class GenericDao[C <: HasId, Cs <: Table[C] with HasIdColumn[C]](table: TableQuery[Cs]) {
+
+  //val table = TableQuery[Cs]
 
   val db = Database.forConfig("h2mem1")
 
-  def insert(newCoffee: Coffee) = run(Insert(newCoffee)).mapTo[Unit]
+  def filterQuery(id: CoffeeKey) = //: Query[Cs, C, Seq] =
+    table.filter(_.id === id)
 
-  def fetch(id: Int) = run(Fetch(id)).mapTo[Vector[Coffee]]
+  def fetchAll() =
+    try db.run(table.filter(x => x.id === x.id).result)
+    finally db.close()
 
-  def remove(id: Int) = run(Remove(id)).mapTo[Int]
+  def fetchById(id: CoffeeKey): Future[C] =
+    try db.run(filterQuery(id).result)
+    finally db.close()
 
-  def update(id: Int, newCoffeeData: Coffee) = run(Update(id, newCoffeeData)).mapTo[Int]
+  def insert(item: C): Future[Int] =
+    try db.run(table += item)
+    finally db.close()
 
-  def fetchAll() = run(FetchAll).mapTo[Vector[Coffee]]
+  def update(id: Long, item: C): Future[Int] =
+    try db.run(filterQuery(id).update(item))
+    finally db.close()
 
-  def run(cmd: Command) = db.run(query(cmd))
-
-  private def query(cmd: Command) = cmd match {
-    case Insert(newCoffee: Coffee) =>
-      DBIO.seq(table += newCoffee)
-    case Fetch(id) =>
-      table.filter(_.id === id).result
-    case Remove(id) =>
-      table.filter(_.id === id).delete
-    case Update(id, newCoffeeData: Coffee) =>
-      table.filter(_.id === id).update(newCoffeeData.updateID(id))
-    case FetchAll =>
-      table.result
-  }
+  def remove(id: Long): Future[Int] =
+    try db.run(filterQuery(id).delete)
+    finally db.close()
 }
 
 
-class CoffeeDaoHandler extends Actor {
-
-  import context.dispatcher
-
-  def receive = {
-    case CommandMsg(cmd, who) =>
-      pipe(CoffeeDao.run(cmd)) to who
-  }
-}
-
-trait Command
-
-case class Fetch(id: Int) extends Command
-
-case class Remove(id: Int) extends Command
-
-case class Insert[C](newElement: C) extends Command
-
-case class Update[C](id: Int, newElement: C) extends Command
-
-case object FetchAll extends Command
-
-case object CommandError extends Command
-
-case class CommandMsg(cmd: Command, sender: ActorRef)
+object CoffeeDao extends GenericDao[Coffee, Coffees](TableQuery[Coffees])

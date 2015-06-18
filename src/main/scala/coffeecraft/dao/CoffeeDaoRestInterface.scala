@@ -1,7 +1,7 @@
 package coffeecraft.dao
 
 import akka.http.scaladsl.model.HttpResponse
-import coffeecraft.models.{Coffee, InventoryItem}
+import coffeecraft.models.{Coffee, Inventory}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -9,7 +9,7 @@ import scala.concurrent.Future
 object CoffeeDaoRestInterface {
 
   def get(id: Int) =
-    CoffeeDao.fetch(id) map (_.headOption)
+    CoffeeDao.fetchById(id)
 
   def delete(id: Int) = {
     CoffeeDao.remove(id) map {
@@ -33,7 +33,7 @@ object CoffeeDaoRestInterface {
         HttpResponse(404)
     }
 
-  def listAll(): Future[Vector[Coffee]] = CoffeeDao.fetchAll()
+  def listAll(): Future[Coffee] = CoffeeDao.fetchById(1) // CoffeeDao.fetchAll()
 
 }
 
@@ -41,10 +41,10 @@ object CoffeeDaoRestInterface {
 object InventoryDaoRestInterface {
 
   def get(id: Int) =
-    InventoryItemDao.fetch(id) map (_.headOption)
+    InventoryDao.fetchById(id)
 
   def delete(id: Int) = {
-    InventoryItemDao.remove(id) map {
+    InventoryDao.remove(id) map {
       case affectedRowCount: Int if affectedRowCount > 0 =>
         HttpResponse(204)
       case _ =>
@@ -52,19 +52,19 @@ object InventoryDaoRestInterface {
     }
   }
 
-  def post(newItem: InventoryItem) = {
-    InventoryItemDao.insert(newItem)
+  def post(newItem: Inventory) = {
+    InventoryDao.insert(newItem)
     HttpResponse(204)
   }
 
-  def put(id: Int, newItem: InventoryItem) =
-    InventoryItemDao.update(id, newItem) map {
+  def put(id: Int, newItem: Inventory) =
+    InventoryDao.update(id, newItem) map {
       case affectedRowCount: Int if affectedRowCount > 0 =>
         HttpResponse(204)
       case _ =>
         HttpResponse(404)
     }
 
-  def listAll(): Future[Vector[InventoryItem]] = InventoryItemDao.fetchAll()
+  def listAll(): Future[Inventory] = InventoryDao.fetchById(1) //All()
 
 }

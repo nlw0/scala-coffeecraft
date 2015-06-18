@@ -1,6 +1,6 @@
 package coffeecraft
 
-import coffeecraft.models.{Coffee, Coffees, InventoryItem, InventoryItems}
+import coffeecraft.models.{Coffee, Coffees, Inventories, Inventory}
 import slick.dbio.DBIO
 import slick.driver.H2Driver.api._
 import slick.lifted.TableQuery
@@ -12,7 +12,7 @@ object InitDB {
   def apply() = {
     val coffees = TableQuery[Coffees]
 
-    val invent = TableQuery[InventoryItems]
+    val invent = TableQuery[Inventories]
 
     val db = Database.forConfig("h2mem1")
 
@@ -23,11 +23,11 @@ object InitDB {
       coffees += Coffee("Coffee", 3.25),
       coffees += Coffee("Sparkling water", 1.20),
       coffees += Coffee("Jameson", 12.50),
-      invent += InventoryItem(101, 2),
-      invent += InventoryItem(101, 3),
-      invent += InventoryItem(102, 1),
-      invent += InventoryItem(102, 4),
-      invent += InventoryItem(102, 4)
+      invent += Inventory(101, 2),
+      invent += Inventory(101, 3),
+      invent += Inventory(102, 1),
+      invent += Inventory(102, 4),
+      invent += Inventory(102, 4)
     )
 
     Await.result(db.run(createTable), Duration.Inf)

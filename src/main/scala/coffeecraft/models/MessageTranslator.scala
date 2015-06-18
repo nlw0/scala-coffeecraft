@@ -1,3 +1,4 @@
+/*
 package coffeecraft.models
 
 import coffeecraft.dao._
@@ -16,11 +17,11 @@ object MessageTranslator {
       (ToCoffee, FetchAll)
 
     case "INVADD" :: uid :: cid :: Nil =>
-      (ToInventory, Insert(InventoryItem(uid.toInt, cid.toInt)))
+      (ToInventory, Insert(Inventory(uid.toInt, cid.toInt)))
     case "INVLIST" :: Nil =>
       (ToInventory, FetchAll)
     case "INVDEL" :: uid :: cid :: Nil =>
-      (ToInventory, Insert(InventoryItem(uid.toInt, cid.toInt)))
+      (ToInventory, Insert(Inventory(uid.toInt, cid.toInt)))
 
     case _ =>
       (ToCoffee, CommandError)
@@ -31,4 +32,4 @@ trait CmdDest
 
 case object ToCoffee extends CmdDest
 
-case object ToInventory extends CmdDest
+case object ToInventory extends CmdDest*/
