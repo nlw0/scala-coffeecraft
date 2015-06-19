@@ -6,7 +6,7 @@ import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorFlowMaterializer
 import coffeecraft.InitDB
-import coffeecraft.dao.{CoffeeDaoRestInterface, InventoryDaoRestInterface}
+import coffeecraft.dao.{CoffeeRestInterface, InventoryRestInterface}
 import coffeecraft.models._
 import spray.json._
 
@@ -25,61 +25,64 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
   implicit val materializer = ActorFlowMaterializer()
 
   val route =
-    path("coffee") {
-      path(IntNumber) { coffeeId: Int =>
-        (get & rejectEmptyResponse) {
-          complete {
-            CoffeeDaoRestInterface.get(coffeeId)
-          }
-        } ~
-        delete {
-          complete {
-            CoffeeDaoRestInterface.delete(coffeeId)
-          }
-        } ~
-        (put & entity(as[Coffee])) { newCoffee =>
-          complete {
-            CoffeeDaoRestInterface.put(coffeeId, newCoffee)
-          }
+    path("coffee" / IntNumber) { coffeeId: Int =>
+      (get & rejectEmptyResponse) {
+        complete {
+          CoffeeRestInterface.get(coffeeId)
         }
       } ~
+      delete {
+        complete {
+          CoffeeRestInterface.delete(coffeeId)
+        }
+      } ~
+      (put & entity(as[Coffee])) { newCoffee =>
+        complete {
+          CoffeeRestInterface.put(coffeeId, newCoffee)
+        }
+      }
+    } ~
+    path("coffee") {
       get {
         complete {
-          CoffeeDaoRestInterface.listAll()
+          CoffeeRestInterface.listAll()
         }
       } ~
       (post & entity(as[Coffee])) { newCoffee =>
         complete {
-          CoffeeDaoRestInterface.post(newCoffee)
+          CoffeeRestInterface.post(newCoffee)
+        }
+      }
+    } ~
+    path("inv" / IntNumber) { coffeeId: Int =>
+      (get & rejectEmptyResponse) {
+        complete {
+          InventoryRestInterface.get(coffeeId)
+        }
+      } ~
+      delete {
+        complete {
+          InventoryRestInterface.delete(coffeeId)
+        }
+      } ~
+      (put & entity(as[Inventory])) { newCoffee =>
+        complete {
+          InventoryRestInterface.put(coffeeId, newCoffee)
         }
       }
     } ~
     path("inv") {
-      path(IntNumber) { uid: Int =>
-        (get & rejectEmptyResponse) {
-          complete {
-            InventoryDaoRestInterface.get(uid)
-          }
-        } ~
-        delete {
-          complete {
-            InventoryDaoRestInterface.delete(uid)
-          }
-        }
-      } ~
       get {
         complete {
-          InventoryDaoRestInterface.listAll()
+          InventoryRestInterface.listAll()
         }
       } ~
       (post & entity(as[Inventory])) { newCoffee =>
         complete {
-          InventoryDaoRestInterface.post(newCoffee)
+          InventoryRestInterface.post(newCoffee)
         }
       }
     }
 
-
   val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
-
 }
