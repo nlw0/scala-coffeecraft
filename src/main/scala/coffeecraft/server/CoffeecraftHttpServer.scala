@@ -7,14 +7,16 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorFlowMaterializer
 import coffeecraft.InitDB
-import coffeecraft.dao.{CoffeeRestInterface, GenericDaoRestInterface, InventoryRestInterface}
+import coffeecraft.dao._
 import coffeecraft.models._
 import spray.json._
 
 
 trait MyMarshalling extends DefaultJsonProtocol with SprayJsonSupport {
-  implicit val coffeeFormat = jsonFormat3(Coffee)
-  implicit val invFormat = jsonFormat3(Inventory)
+  implicit val coffeeFmt = jsonFormat3(Coffee)
+  implicit val inventoryFmt = jsonFormat3(Inventory)
+  implicit val recipeFmt = jsonFormat2(Recipe)
+  implicit val ingredientFmt = jsonFormat2(Ingredient)
 }
 
 
@@ -38,7 +40,9 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
 
   val route =
     crudRoute[Coffee, Coffees]("coffee", CoffeeRestInterface) ~
-    crudRoute[Inventory, Inventories]("inv", InventoryRestInterface)
+    crudRoute[Inventory, Inventories]("inv", InventoryRestInterface) ~
+    crudRoute[Recipe, Recipes]("recipe", RecipeRestInterface) ~
+    crudRoute[Ingredient, Ingredients]("ingredients", IngredientRestInterface)
 
   val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
 }

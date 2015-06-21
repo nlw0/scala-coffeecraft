@@ -1,19 +1,12 @@
 package coffeecraft.dao
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.HttpResponse
 import coffeecraft.models._
-import spray.json.DefaultJsonProtocol
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
-trait MyMarshallingg extends DefaultJsonProtocol with SprayJsonSupport {
-  implicit val coffeeFormat = jsonFormat3(Coffee)
-  implicit val invFormat = jsonFormat3(Inventory)
-}
-
-case class GenericDaoRestInterface[E <: EntityWithId, T <: TableWithId[E], K](dao: GenericDao[E, T, K]) extends MyMarshallingg {
+case class GenericDaoRestInterface[E <: EntityWithId, T <: TableWithId[E], K](dao: GenericDao[E, T, K]) {
 
   def get(id: K) =
     dao.fetchById(id)
@@ -47,3 +40,7 @@ case class GenericDaoRestInterface[E <: EntityWithId, T <: TableWithId[E], K](da
 object CoffeeRestInterface extends GenericDaoRestInterface(CoffeeDao)
 
 object InventoryRestInterface extends GenericDaoRestInterface(InventoryDao)
+
+object RecipeRestInterface extends GenericDaoRestInterface(RecipeDao)
+
+object IngredientRestInterface extends GenericDaoRestInterface(IngredientDao)

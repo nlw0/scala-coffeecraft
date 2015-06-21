@@ -1,46 +1,55 @@
-/*
 package coffeecraft.camelserver
 
 import akka.actor.{Actor, Props}
 import akka.camel.{CamelMessage, Consumer}
-import coffeecraft.dao.{InventoryDao, CoffeeDao}
+import coffeecraft.InitDB
 import coffeecraft.models._
-import akka.pattern.pipe
 
 
 class CoffeecraftCamelTcpServer extends Consumer {
-  def endpointUri = "netty:tcp://localhost:60001?textline=true"
+  InitDB()
 
-  val dbh = context.actorOf(Props[CoffeeDaoHandler])
-  val invh = context.actorOf(Props[InventoryItemDaoHandler])
+  val invActor = context.actorOf(Props[UserInventory])
+
+  def endpointUri = "netty:tcp://localhost:60001?textline=true"
 
   def receive = {
     case msg: CamelMessage =>
       println(s"received ${msg.bodyAs[String]}")
-
-      MessageTranslator(msg.bodyAs[String]) match {
-        case (ToCoffee, mm) => dbh ! CommandMsg(mm, sender)
-        case (ToInventory, mm) => invh ! CommandMsg(mm, sender)
-      }
+      invActor forward MessageTranslator(msg.bodyAs[String])
   }
 }
 
-class CoffeeDaoHandler extends Actor {
 
-  import context.dispatcher
+class UserInventory extends Actor {
+
+  var inventory = Map[Long, Coffee](
+    1L -> Coffee("Coffee", 2.50, Some(1L)),
+    2L -> Coffee("Milk", 2.0, Some(2L)),
+    3L -> Coffee("Milk", 2.0, Some(2L)),
+    4L -> Coffee("Jameson", 12.50, Some(5L)),
+    5L -> Coffee("Coffee", 2.50, Some(1L))
+  )
 
   def receive = {
-    case CommandMsg(cmd, who) =>
-      pipe(CoffeeDao.run(cmd)) to who
+    case ListCmd =>
+      sender ! "Inv: " + inventory
+
+    case MineCmd =>
+      val mineResult = CraftingProcessor.mine()
+      if (mineResult.isDefined) inventory += (inventory.keys.max + 1L -> mineResult.get)
+      sender ! "Res: " + mineResult
+
+    case CraftCmd(ii) =>
+      val ingredients = CoffeeIdSet(ii map (inventory(_).id.get))
+      val craftResult = CraftingProcessor(ingredients)
+      if (craftResult.isDefined) inventory = (inventory -- ii) + (inventory.keys.max + 1L -> craftResult.get)
+      sender ! "Res: " + craftResult
   }
 }
 
-class InventoryItemDaoHandler extends Actor {
+case class CraftCmd(items: Set[Long])
 
-  import context.dispatcher
+case object ListCmd
 
-  def receive = {
-    case CommandMsg(cmd, who) =>
-      pipe(InventoryDao.run(cmd)) to who
-  }
-}*/
+case object MineCmd

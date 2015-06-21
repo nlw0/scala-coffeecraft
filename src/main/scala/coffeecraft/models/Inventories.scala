@@ -3,20 +3,20 @@ package coffeecraft.models
 import slick.driver.H2Driver.api._
 
 
-case class Inventory(userId: CoffeeKey, coffeId: CoffeeKey, id: Option[CoffeeKey] = None) extends EntityWithId
+case class Inventory(userId: Long, coffeId: Long, id: Option[Long] = None) extends EntityWithId
 
 
-class Inventories(tag: Tag) extends TableWithId[Inventory](tag, "INVENTORY") {
+class Inventories(tag: Tag) extends TableWithId[Inventory](tag, "INVENTORIES") {
 
   val coffees = TableQuery[Coffees]
 
-  def id = column[CoffeeKey]("Id", O.PrimaryKey, O.AutoInc)
+  def id = column[Long]("ID", O.PrimaryKey, O.AutoInc)
 
-  def userId = column[CoffeeKey]("USER_ID")
+  def userId = column[Long]("USER_ID")
 
-  def coffeeId = column[CoffeeKey]("COFFEE_ID")
+  def coffeeId = column[Long]("COFFEE_ID")
 
-  def coffee = foreignKey("COFFEE_FK", coffeeId, coffees)(_.id)
+  def coffee = foreignKey("INVENTORY_COFFEE_FK", coffeeId, coffees)(_.id)
 
   def * = (userId, coffeeId, id.?) <>(Inventory.tupled, Inventory.unapply)
 }
