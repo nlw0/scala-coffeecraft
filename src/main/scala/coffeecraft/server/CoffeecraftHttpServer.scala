@@ -9,8 +9,8 @@ import akka.stream.ActorFlowMaterializer
 import coffeecraft.InitDB
 import coffeecraft.dao._
 import coffeecraft.models._
+import slick.driver.H2Driver.api._
 import spray.json._
-
 
 trait MyMarshalling extends DefaultJsonProtocol with SprayJsonSupport {
   implicit val coffeeFmt = jsonFormat3(Coffee)
@@ -27,7 +27,7 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
   implicit val system = ActorSystem("my-system")
   implicit val materializer = ActorFlowMaterializer()
 
-  def crudRoute[E <: EntityWithId, T <: TableWithId[E]](nome: String, dao: GenericDaoRestInterface[E, T, Long])(implicit fmt: RootJsonFormat[E]): Route =
+  def crudRoute[E, T <: Table[E]](nome: String, dao: GenericDaoRestInterface[E, T, Long])(implicit fmt: RootJsonFormat[E]): Route =
     path(nome / LongNumber) { entityId: Long =>
       (get & rejectEmptyResponse) { ctx => ctx.complete(dao.get(entityId)) } ~
       (put & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.put(entityId, newCoffee)) } ~

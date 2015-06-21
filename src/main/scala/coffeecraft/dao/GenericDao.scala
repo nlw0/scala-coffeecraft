@@ -1,13 +1,12 @@
 package coffeecraft.dao
 
-import coffeecraft.models._
 import slick.driver.H2Driver.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 
-abstract class GenericDao[E <: EntityWithId, T <: TableWithId[E], K] {
+abstract class GenericDao[E, T <: Table[E], K] {
 
   val table: TableQuery[T]
 
@@ -18,7 +17,10 @@ abstract class GenericDao[E <: EntityWithId, T <: TableWithId[E], K] {
   def fetchAll() =
     db.run(table.result)
 
-  def fetchById(id: K): Future[Option[E]] =
+  def fetchById(id: K): Future[Seq[E]] =
+    db.run(filterQuery(id).result)
+
+  def fetchOneById(id: K): Future[Option[E]] =
     db.run(filterQuery(id).result).map(_.headOption)
 
   def insert(item: E): Future[Int] =

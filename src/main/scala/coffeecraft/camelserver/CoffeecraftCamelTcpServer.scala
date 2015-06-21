@@ -1,6 +1,6 @@
 package coffeecraft.camelserver
 
-import akka.actor.{Actor, Props}
+import akka.actor.Props
 import akka.camel.{CamelMessage, Consumer}
 import coffeecraft.InitDB
 import coffeecraft.models._
@@ -9,19 +9,19 @@ import coffeecraft.models._
 class CoffeecraftCamelTcpServer extends Consumer {
   InitDB()
 
-  val invActor = context.actorOf(Props[UserInventory])
-
   def endpointUri = "netty:tcp://localhost:60001?textline=true"
+
+  val invActor = context.actorOf(Props(classOf[UserInventory], 102))
 
   def receive = {
     case msg: CamelMessage =>
-      println(s"received ${msg.bodyAs[String]}")
+      // println(s"received ${msg.bodyAs[String]}")
       invActor forward MessageTranslator(msg.bodyAs[String])
   }
 }
 
 
-class UserInventory extends Actor {
+/*class UserInventory extends Actor {
 
   var inventory = Map[Long, Coffee](
     1L -> Coffee("Coffee", 2.50, Some(1L)),
@@ -42,14 +42,8 @@ class UserInventory extends Actor {
 
     case CraftCmd(ii) =>
       val ingredients = CoffeeIdSet(ii map (inventory(_).id.get))
-      val craftResult = CraftingProcessor(ingredients)
+      val craftResult = CraftingProcessor.craft(ingredients)
       if (craftResult.isDefined) inventory = (inventory -- ii) + (inventory.keys.max + 1L -> craftResult.get)
       sender ! "Res: " + craftResult
   }
-}
-
-case class CraftCmd(items: Set[Long])
-
-case object ListCmd
-
-case object MineCmd
+}*/

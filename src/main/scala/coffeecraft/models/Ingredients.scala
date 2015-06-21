@@ -3,10 +3,10 @@ package coffeecraft.models
 import slick.driver.H2Driver.api._
 
 
-case class Ingredient(coffeeId: Long, id: Option[Long]) extends EntityWithId
+case class Ingredient(coffeeId: Long, id: Option[Long])
 
 
-class Ingredients(tag: Tag) extends TableWithId[Ingredient](tag, "RECIPE_INGREDIENTS") {
+class Ingredients(tag: Tag) extends Table[Ingredient](tag, "RECIPE_INGREDIENTS") {
 
   val coffees = TableQuery[Coffees]
 

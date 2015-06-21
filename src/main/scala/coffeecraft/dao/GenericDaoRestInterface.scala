@@ -1,15 +1,15 @@
 package coffeecraft.dao
 
 import akka.http.scaladsl.model.HttpResponse
-import coffeecraft.models._
+import slick.driver.H2Driver.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
-case class GenericDaoRestInterface[E <: EntityWithId, T <: TableWithId[E], K](dao: GenericDao[E, T, K]) {
+case class GenericDaoRestInterface[E, T <: Table[E], K](dao: GenericDao[E, T, K]) {
 
   def get(id: K) =
-    dao.fetchById(id)
+    dao.fetchOneById(id)
 
   def delete(id: K) = {
     dao.remove(id) map {
