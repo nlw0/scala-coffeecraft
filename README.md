@@ -1,7 +1,16 @@
 # scala-coffeecraft
-Testing akka-http and slick
+This project is an experiment and exercise on using akka-http and slick. We first try to show:
+  - How to perform basic CRUD operations in a DB with Slick.
+  - How to write a generic DAO class to handle CRUD from different tables.
+  - How to write a generic REST routes for those DAOs with GET, POST, DELETE and PUT operations.
 
-Right now we only have basic CRUD of coffee ingredients. Will implement some kind of "crafting" method later, to illustrate how to do something else beyond CRUD.
+And then some more complex stuff:
+  - How to separate persistence, application and interface layers.
+  - How to write an actor-based application with Akka.
+
+## How does it work anyway?
+
+The application has a bunch of coffee ingredients and products, and each user has an inventory containing a bunch of these. Ingredients can be "crafted" together to produce a new coffee product that is added to the inventory, consuming the ingredients. We can also "mine" for new random ingredients.
 
 ### Example session from the TCP interface
 ```
