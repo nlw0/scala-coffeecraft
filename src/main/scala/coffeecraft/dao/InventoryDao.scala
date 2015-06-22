@@ -6,17 +6,19 @@ import slick.driver.H2Driver.api._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
-object InventoryDao extends GenericDao[Inventory, Inventories, Long] {
+object InventoryDao extends GenericDao[Inventory, Inventories, (Long, Long)] {
   override val table = TableQuery[Inventories]
 
-  override def filterQuery(id: Long): Query[Inventories, Inventory, Seq] = table.filter(_.userId === id)
+  override def filterQuery(pk: (Long, Long)): Query[Inventories, Inventory, Seq] =
+    table filter { mm => mm.userId === pk._1 && mm.index === pk._2 }
 
   val coffees = TableQuery[Coffees]
 
-  def fetchInventory(id: Long) = db.run(userInventoryQuery(id).result) map { xx =>
-    xx map { case (ii, cc) => ii.index -> cc } toMap
+  def fetchInventory(uid: Long) = db.run(userInventoryQuery(uid).result) map { xx =>
+    xx map { case (ii, cc) => ii.index -> cc }
   }
 
-  private def userInventoryQuery(id: Long) = filterQuery(id) join coffees on (_.coffeeId === _.id)
+  private def userInventoryQuery(uid: Long) =
+    table.filter(mm => mm.userId === uid) join coffees on (_.coffeeId === _.id)
 
 }

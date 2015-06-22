@@ -13,7 +13,7 @@ class UserInventory(userId: Long) extends Actor {
 
   InventoryDao.fetchInventory(userId) onComplete {
     case Success(inventory) =>
-      context.become(withInventory(inventory))
+      context.become(withInventory(inventory.toMap))
     case Failure(e) =>
       println("Cannot initialize actor")
       self ! PoisonPill
@@ -31,16 +31,16 @@ class UserInventory(userId: Long) extends Actor {
       val mineResult = CraftingProcessor.mine()
       if (mineResult.isDefined) {
         context.become(withInventory(inventory + (inventory.keys.max + 1L -> mineResult.get)))
-        sender ! ActionAck
       }
+      sender ! mineResult
 
     case CraftCmd(ii) =>
       val ingredients = CoffeeIdSet(ii map (inventory(_).id.get))
       val craftResult = CraftingProcessor.craft(ingredients)
       if (craftResult.isDefined) {
         context.become(withInventory((inventory -- ii) + (inventory.keys.max + 1L -> craftResult.get)))
-        sender ! ActionAck
       }
+      sender ! craftResult
 
   }
 }

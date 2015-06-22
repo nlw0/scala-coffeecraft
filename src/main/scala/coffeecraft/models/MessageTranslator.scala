@@ -8,7 +8,7 @@ object MessageTranslator {
       ListCmd
     case "MINE" :: Nil =>
       MineCmd
-    case "CRAFT" :: userIdS :: inventoryIds =>
+    case "CRAFT" :: inventoryIds =>
       CraftCmd(inventoryIds map (_.toLong) toSet)
     case _ =>
   }
