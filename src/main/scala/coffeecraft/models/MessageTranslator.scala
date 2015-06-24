@@ -10,6 +10,8 @@ object MessageTranslator {
       MineCmd
     case "CRAFT" :: inventoryIds =>
       CraftCmd(inventoryIds map (_.toLong) toSet)
+    case "SELL" :: inventoryId :: Nil =>
+      SellCmd(inventoryId.toLong)
     case _ =>
   }
 }

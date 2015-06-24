@@ -13,7 +13,7 @@ class UserInventory(userId: Long) extends Actor {
 
   InventoryDao.fetchInventory(userId) onComplete {
     case Success(inventory) =>
-      context.become(withInventory(inventory.toMap))
+      context.become(withInventory(10.0, inventory.toMap))
     case Failure(e) =>
       println("Cannot initialize actor")
       self ! PoisonPill
@@ -23,35 +23,51 @@ class UserInventory(userId: Long) extends Actor {
     case _ =>
   }
 
-  def withInventory(inventory: Map[Long, Coffee]): Receive = {
+  def withInventory(money: Double, inventory: Map[Long, Coffee]): Receive = {
     case ListCmd =>
-      sender ! inventory
+      sender !(money, inventory)
 
     case MineCmd =>
-      val mineResult = CraftingProcessor.mine()
-      if (mineResult.isDefined) {
-        context.become(withInventory(inventory + (inventory.keys.max + 1L -> mineResult.get)))
-      }
+      val mineResult = CraftingProcessor.mine(forFree = money < 2.0)
+      context.become(
+        withInventory(
+          if (money > 2.0) money - 2.0 else money,
+          if (mineResult.isDefined) inventory + (inventory.keys.max + 1L -> mineResult.get)
+          else inventory
+        )
+      )
       sender ! mineResult
 
-    case CraftCmd(ii) =>
-      val ingredients = CoffeeIdSet(ii map (inventory(_).id.get))
+    case CraftCmd(is) =>
+      val ingredients = CoffeeIdSet(is map (inventory(_).id.get))
       val craftResult = CraftingProcessor.craft(ingredients)
       if (craftResult.isDefined) {
-        context.become(withInventory((inventory -- ii) + (inventory.keys.max + 1L -> craftResult.get)))
+        context.become(
+          withInventory(money, (inventory -- is) + (inventory.keys.max + 1L -> craftResult.get))
+        )
       }
       sender ! craftResult
 
+    case SellCmd(ii) =>
+      inventory.get(ii) match {
+        case Some(cc) =>
+          context.become(withInventory(money + cc.price, inventory - ii))
+          sender ! Some(cc.price)
+        case None =>
+          sender ! None
+      }
   }
 }
 
 object UserInventory {
 
-  case class CraftCmd(items: Set[Long])
-
   case object ListCmd
 
   case object MineCmd
+
+  case class CraftCmd(items: Set[Long])
+
+  case class SellCmd(item: Long)
 
   case object ActionAck
 

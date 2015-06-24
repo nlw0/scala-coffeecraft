@@ -13,14 +13,11 @@ class BaseCraftingProcessor(val craftingFunction: Map[CoffeeIdSet, Coffee]) {
   }
 
   // TODO: retrieve mining probabilities from some table
-  def mine() = {
-    scala.util.Random.nextInt(3) match {
-      case x if x > 1 =>
-        Await.result(CoffeeDao.fetchOneById(scala.util.Random.nextInt(2).toLong + 1L), Duration.Inf)
-      case x if x > 0 =>
-        Await.result(CoffeeDao.fetchOneById(scala.util.Random.nextInt(5).toLong + 1L), Duration.Inf)
-      case _ => None
-    }
+  def mine(forFree: Boolean = false) = {
+    val idLimit = if (forFree) 3 else 6
+    if (scala.util.Random.nextInt(2) == 0)
+      Await.result(CoffeeDao.fetchOneById(scala.util.Random.nextInt(idLimit).toLong + 1L), Duration.Inf)
+    else None
   }
 }
 
