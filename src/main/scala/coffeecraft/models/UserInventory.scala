@@ -49,10 +49,16 @@ class UserInventory(userId: Long) extends Actor {
       if (craftResult.isDefined) context.become(withInventory(money, (inventory plus craftResult) -- is))
       sender ! (if (validIndices && craftResult.isDefined) ActionACK else ActionNACK)
 
-    case SellCmd(ii) =>
-      val sellingItem = inventory.get(ii)
-      for (cc <- sellingItem) context.become(withInventory(roundMoney(money + cc.price), inventory - ii))
-      sender ! (if (sellingItem.isDefined) ActionACK else ActionNACK)
+    case SellCmd(is) =>
+      val validIndices = is forall inventory.contains
+      val (newMoney, newInventory) = ((money, inventory) /: is) {
+        case ((macc, invacc), ii) =>
+          val sellingItem = inventory.get(ii)
+          if (sellingItem.isDefined) (roundMoney(macc + sellingItem.get.price), invacc - ii)
+          else (macc, invacc)
+      }
+      context.become(withInventory(newMoney, newInventory))
+      sender ! (if (validIndices) ActionACK else ActionNACK)
   }
 
   def roundMoney(x: Double) = math.round(x * 100.0) / 100.0
@@ -66,7 +72,7 @@ object UserInventory {
 
   case class CraftCmd(items: Set[Long])
 
-  case class SellCmd(item: Long)
+  case class SellCmd(item: Set[Long])
 
   case object ActionACK
 

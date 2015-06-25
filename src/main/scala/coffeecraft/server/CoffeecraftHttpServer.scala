@@ -69,22 +69,37 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
     } ~
     crudRoute[Recipe, Recipes]("recipe", RecipeRestInterface) ~
     crudRoute[Ingredient, Ingredients]("ingredients", IngredientRestInterface) ~
+    path("api" / LongNumber / "craft") { uid: Long =>
+      val usr = userActors(uid)
+      println("WHAT")
+      (post & entity(as[List[Long]])) { invIds =>
+        complete {
+          (usr ? CraftCmd(invIds.toSet)) flatMap { x =>
+            println(x)
+            (usr ? ListCmd).mapTo[CoolUserState]
+          }
+        }
+      }
+    } ~
+    path("api" / LongNumber / "sell") { uid: Long =>
+      val usr = userActors(uid)
+      println("WHAT")
+      (post & entity(as[List[Long]])) {
+        invIds =>
+          complete {
+            (usr ? SellCmd(invIds.toSet)) flatMap {
+              x =>
+                println(x)
+                (usr ? ListCmd).mapTo[CoolUserState]
+            }
+          }
+      }
+    } ~
     path("api" / LongNumber) { uid: Long =>
       val usr = userActors(uid)
       get {
-        parameter('cmd) {
-          cmd =>
-            println(cmd)
-            complete {
-              (usr ? MessageTranslator(cmd)) flatMap {
-                x =>
-                  println(x)
-                  (usr ? ListCmd).mapTo[CoolUserState]
-              }
-            }
-        }
-      } ~
-      get { ctx => ctx.complete((usr ? ListCmd).mapTo[CoolUserState]) }
+        ctx => ctx.complete((usr ? ListCmd).mapTo[CoolUserState])
+      }
     }
 
   val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
