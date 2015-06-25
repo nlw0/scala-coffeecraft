@@ -39,68 +39,48 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
   def crudRoute[E, T <: Table[E]](nome: String, dao: GenericDaoRestInterface[E, T, Long])(implicit fmt: RootJsonFormat[E]): Route =
     path(nome / LongNumber) { entityId: Long =>
       (get & rejectEmptyResponse) { ctx => ctx.complete(dao.get(entityId)) } ~
-      (put & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.put(entityId, newCoffee)) } ~
-      delete { ctx => ctx.complete(dao.delete(entityId)) }
+        (put & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.put(entityId, newCoffee)) } ~
+        delete { ctx => ctx.complete(dao.delete(entityId)) }
     } ~
-    path(nome) {
-      get { ctx => ctx.complete(dao.listAll()) } ~
-      (post & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.post(newCoffee)) }
-    }
+      path(nome) {
+        get { ctx => ctx.complete(dao.listAll()) } ~
+          (post & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.post(newCoffee)) }
+      }
 
   def crudRouteTuple[E, T <: Table[E]](nome: String, dao: GenericDaoRestInterface[E, T, (Long, Long)])(implicit fmt: RootJsonFormat[E]): Route =
     path(nome / LongNumber / LongNumber) { (entityIdA: Long, entityIdB: Long) =>
       val entityId = (entityIdA, entityIdB)
       (get & rejectEmptyResponse) { ctx => ctx.complete(dao.get(entityId)) } ~
-      (put & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.put(entityId, newCoffee)) } ~
-      delete { ctx => ctx.complete(dao.delete(entityId)) }
+        (put & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.put(entityId, newCoffee)) } ~
+        delete { ctx => ctx.complete(dao.delete(entityId)) }
     } ~
-    path(nome) {
-      get { ctx => ctx.complete(dao.listAll()) } ~
-      (post & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.post(newCoffee)) }
-    }
+      path(nome) {
+        get { ctx => ctx.complete(dao.listAll()) } ~
+          (post & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.post(newCoffee)) }
+      }
 
   implicit val askTimeout: Timeout = 5.seconds
 
   val route =
     crudRoute[Coffee, Coffees]("coffee", CoffeeRestInterface) ~
-    crudRouteTuple[Inventory, Inventories]("inv", InventoryRestInterface) ~
-    path("inv" / LongNumber) { uid: Long =>
-      (get & rejectEmptyResponse) { ctx => ctx.complete(InventoryDao.fetchInventory(uid).map(_.toList)) }
-    } ~
-    crudRoute[Recipe, Recipes]("recipe", RecipeRestInterface) ~
-    crudRoute[Ingredient, Ingredients]("ingredients", IngredientRestInterface) ~
-    path("api" / LongNumber / "craft") { uid: Long =>
-      val usr = userActors(uid)
-      println("WHAT")
-      (post & entity(as[List[Long]])) { invIds =>
-        complete {
-          (usr ? CraftCmd(invIds.toSet)) flatMap { x =>
-            println(x)
-            (usr ? ListCmd).mapTo[CoolUserState]
-          }
+      crudRouteTuple[Inventory, Inventories]("inv", InventoryRestInterface) ~
+      path("inv" / LongNumber) { uid: Long =>
+        (get & rejectEmptyResponse) { ctx => ctx.complete(InventoryDao.fetchInventory(uid).map(_.toList)) }
+      } ~
+      crudRoute[Recipe, Recipes]("recipe", RecipeRestInterface) ~
+      crudRoute[Ingredient, Ingredients]("ingredients", IngredientRestInterface) ~
+      pathPrefix("api" / LongNumber) { uid: Long =>
+        val usr = userActors(uid)
+        (pathEnd & get) { ctx =>
+          ctx.complete((usr ? ListCmd).mapTo[CoolUserState])
+        } ~ (path("craft") & post & entity(as[List[Long]])) { invIds => ctx =>
+          ctx.complete((usr ? CraftCmd(invIds.toSet)) flatMap { x => (usr ? ListCmd).mapTo[CoolUserState] })
+        } ~ (path("sell") & post & entity(as[List[Long]])) { invIds => ctx =>
+          ctx.complete((usr ? SellCmd(invIds.toSet)) flatMap { x => (usr ? ListCmd).mapTo[CoolUserState] })
+        } ~ (path("mine") & post) { ctx =>
+          ctx.complete((usr ? MineCmd) flatMap { x => (usr ? ListCmd).mapTo[CoolUserState] })
         }
       }
-    } ~
-    path("api" / LongNumber / "sell") { uid: Long =>
-      val usr = userActors(uid)
-      println("WHAT")
-      (post & entity(as[List[Long]])) {
-        invIds =>
-          complete {
-            (usr ? SellCmd(invIds.toSet)) flatMap {
-              x =>
-                println(x)
-                (usr ? ListCmd).mapTo[CoolUserState]
-            }
-          }
-      }
-    } ~
-    path("api" / LongNumber) { uid: Long =>
-      val usr = userActors(uid)
-      get {
-        ctx => ctx.complete((usr ? ListCmd).mapTo[CoolUserState])
-      }
-    }
 
   val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
 }
