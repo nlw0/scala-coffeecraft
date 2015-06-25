@@ -23,6 +23,15 @@ class UserInventory(userId: Long) extends Actor {
     case _ =>
   }
 
+  implicit class InventoryMethods(inventory: Map[Long, Coffee]) {
+    def plus(coffee: Option[Coffee]): Map[Long, Coffee] = coffee match {
+      case Some(cc) =>
+        val newIndex = Stream from 1 find (x => !(inventory contains x)) map (_.toLong) getOrElse 0L
+        inventory + (newIndex -> cc)
+      case None => inventory
+    }
+  }
+
   def withInventory(money: Double, inventory: Map[Long, Coffee]): Receive = {
     case ListCmd =>
       sender ! UserState(money, inventory)
@@ -30,39 +39,22 @@ class UserInventory(userId: Long) extends Actor {
     case MineCmd =>
       val newMoney = if (money < 2.0) money else roundMoney(money - 2.0)
       val mineResult = CraftingProcessor.mine(forFree = money < 2.0)
-      val newInventory = insert(inventory, mineResult)
-      context.become(withInventory(newMoney, newInventory))
+      context.become(withInventory(newMoney, inventory plus mineResult))
       sender ! (if (mineResult.isDefined) ActionACK else ActionNACK)
 
     case CraftCmd(is) =>
       val ingredients = CoffeeIdSet(is map (inventory(_).id.get))
       val craftResult = CraftingProcessor.craft(ingredients)
-      if (craftResult.isDefined) {
-        context.become(withInventory(money, insert(inventory, craftResult) -- is))
-        sender ! ActionACK
-      } else {
-        sender ! ActionNACK
-      }
+      if (craftResult.isDefined) context.become(withInventory(money, (inventory plus craftResult) -- is))
+      sender ! (if (craftResult.isDefined) ActionACK else ActionNACK)
 
     case SellCmd(ii) =>
-      inventory.get(ii) match {
-        case Some(cc) =>
-          context.become(withInventory(roundMoney(money + cc.price), inventory - ii))
-          sender ! ActionACK
-        case None =>
-          sender ! ActionNACK
-      }
-  }
-
-  def insert(inventory: Map[Long, Coffee], coffee: Option[Coffee]) = coffee match {
-    case Some(cc) =>
-      val newIndex = Stream from 1 find (x => !(inventory contains x)) map (_.toLong) getOrElse 0L
-      inventory + (newIndex -> cc)
-    case None => inventory
+      val sellingItem = inventory.get(ii)
+      for (cc <- sellingItem) context.become(withInventory(roundMoney(money + cc.price), inventory - ii))
+      sender ! (if (sellingItem.isDefined) ActionACK else ActionNACK)
   }
 
   def roundMoney(x: Double) = math.round(x * 100.0) / 100.0
-
 }
 
 object UserInventory {
