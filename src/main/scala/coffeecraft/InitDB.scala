@@ -58,12 +58,12 @@ object InitDB {
       ingredients += Ingredient(2L, Some(5L)),
       ingredients += Ingredient(6L, Some(5L)),
 
-      inventories += Inventory(101, 2, 1),
-      inventories += Inventory(101, 3, 2),
+      inventories += Inventory(101, 2, 0),
+      inventories += Inventory(101, 3, 1),
+      inventories += Inventory(102, 1, 0),
       inventories += Inventory(102, 1, 1),
-      inventories += Inventory(102, 1, 2),
-      inventories += Inventory(102, 2, 3),
-      inventories += Inventory(102, 4, 4)
+      inventories += Inventory(102, 2, 2),
+      inventories += Inventory(102, 4, 3)
     )
 
     Await.result(db.run(createTable), Duration.Inf)

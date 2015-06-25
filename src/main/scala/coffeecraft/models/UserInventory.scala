@@ -26,7 +26,7 @@ class UserInventory(userId: Long) extends Actor {
   implicit class InventoryMethods(inventory: Map[Long, Coffee]) {
     def plus(coffee: Option[Coffee]): Map[Long, Coffee] = coffee match {
       case Some(cc) =>
-        val newIndex = Stream from 1 find (x => !(inventory contains x)) map (_.toLong) getOrElse 0L
+        val newIndex = Stream from 0 find (x => !(inventory contains x)) map (_.toLong) getOrElse 0L
         inventory + (newIndex -> cc)
       case None => inventory
     }
@@ -34,7 +34,7 @@ class UserInventory(userId: Long) extends Actor {
 
   def withInventory(money: Double, inventory: Map[Long, Coffee]): Receive = {
     case ListCmd =>
-      sender ! UserState(money, inventory)
+      sender ! CoolUserState(money, (0L to (if (inventory.isEmpty) 0L else inventory.keys.max)) map inventory.get)
 
     case MineCmd =>
       val newMoney = if (money < 2.0) money else roundMoney(money - 2.0)
@@ -43,10 +43,11 @@ class UserInventory(userId: Long) extends Actor {
       sender ! (if (mineResult.isDefined) ActionACK else ActionNACK)
 
     case CraftCmd(is) =>
-      val ingredients = CoffeeIdSet(is map (inventory(_).id.get))
+      val validIndices = is forall inventory.contains
+      val ingredients = CoffeeIdSet(if (validIndices) is map (inventory(_).id.get) else Set())
       val craftResult = CraftingProcessor.craft(ingredients)
       if (craftResult.isDefined) context.become(withInventory(money, (inventory plus craftResult) -- is))
-      sender ! (if (craftResult.isDefined) ActionACK else ActionNACK)
+      sender ! (if (validIndices && craftResult.isDefined) ActionACK else ActionNACK)
 
     case SellCmd(ii) =>
       val sellingItem = inventory.get(ii)
@@ -72,5 +73,7 @@ object UserInventory {
   case object ActionNACK
 
   case class UserState(money: Double, inventory: Map[Long, Coffee])
+
+  case class CoolUserState(money: Double, inventory: Seq[Option[Coffee]])
 
 }
