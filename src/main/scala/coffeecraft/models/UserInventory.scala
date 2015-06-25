@@ -25,38 +25,44 @@ class UserInventory(userId: Long) extends Actor {
 
   def withInventory(money: Double, inventory: Map[Long, Coffee]): Receive = {
     case ListCmd =>
-      sender !(money, inventory)
+      sender ! UserState(money, inventory)
 
     case MineCmd =>
+      val newMoney = if (money < 2.0) money else roundMoney(money - 2.0)
       val mineResult = CraftingProcessor.mine(forFree = money < 2.0)
-      context.become(
-        withInventory(
-          if (money > 2.0) money - 2.0 else money,
-          if (mineResult.isDefined) inventory + (inventory.keys.max + 1L -> mineResult.get)
-          else inventory
-        )
-      )
-      sender ! mineResult
+      val newInventory = insert(inventory, mineResult)
+      context.become(withInventory(newMoney, newInventory))
+      sender ! (if (mineResult.isDefined) ActionACK else ActionNACK)
 
     case CraftCmd(is) =>
       val ingredients = CoffeeIdSet(is map (inventory(_).id.get))
       val craftResult = CraftingProcessor.craft(ingredients)
       if (craftResult.isDefined) {
-        context.become(
-          withInventory(money, (inventory -- is) + (inventory.keys.max + 1L -> craftResult.get))
-        )
+        context.become(withInventory(money, insert(inventory, craftResult) -- is))
+        sender ! ActionACK
+      } else {
+        sender ! ActionNACK
       }
-      sender ! craftResult
 
     case SellCmd(ii) =>
       inventory.get(ii) match {
         case Some(cc) =>
-          context.become(withInventory(money + cc.price, inventory - ii))
-          sender ! Some(cc.price)
+          context.become(withInventory(roundMoney(money + cc.price), inventory - ii))
+          sender ! ActionACK
         case None =>
-          sender ! None
+          sender ! ActionNACK
       }
   }
+
+  def insert(inventory: Map[Long, Coffee], coffee: Option[Coffee]) = coffee match {
+    case Some(cc) =>
+      val newIndex = Stream from 1 find (x => !(inventory contains x)) map (_.toLong) getOrElse 0L
+      inventory + (newIndex -> cc)
+    case None => inventory
+  }
+
+  def roundMoney(x: Double) = math.round(x * 100.0) / 100.0
+
 }
 
 object UserInventory {
@@ -69,6 +75,10 @@ object UserInventory {
 
   case class SellCmd(item: Long)
 
-  case object ActionAck
+  case object ActionACK
+
+  case object ActionNACK
+
+  case class UserState(money: Double, inventory: Map[Long, Coffee])
 
 }
