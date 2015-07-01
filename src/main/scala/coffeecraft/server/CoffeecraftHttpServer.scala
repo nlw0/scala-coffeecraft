@@ -3,6 +3,7 @@ package coffeecraft.server
 import akka.actor._
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.pattern.ask
@@ -23,6 +24,7 @@ trait MyMarshalling extends DefaultJsonProtocol with SprayJsonSupport {
   implicit val inventoryFmt = jsonFormat3(Inventory)
   implicit val recipeFmt = jsonFormat2(Recipe)
   implicit val ingredientFmt = jsonFormat2(Ingredient)
+  implicit val invItemFmt = jsonFormat2(InventoryItem)
   implicit val userStateFmt = jsonFormat2(CoolUserState)
 }
 
@@ -39,39 +41,39 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
   def crudRoute[E, T <: Table[E]](nome: String, dao: GenericDaoRestInterface[E, T, Long])(implicit fmt: RootJsonFormat[E]): Route =
     path(nome / LongNumber) { entityId: Long =>
       (get & rejectEmptyResponse) { ctx => ctx.complete(dao.get(entityId)) } ~
-        (put & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.put(entityId, newCoffee)) } ~
-        delete { ctx => ctx.complete(dao.delete(entityId)) }
+      (put & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.put(entityId, newCoffee)) } ~
+      delete { ctx => ctx.complete(dao.delete(entityId)) }
     } ~
-      path(nome) {
-        get { ctx => ctx.complete(dao.listAll()) } ~
-          (post & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.post(newCoffee)) }
-      }
+    path(nome) {
+      get { ctx => ctx.complete(dao.listAll()) } ~
+      (post & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.post(newCoffee)) }
+    }
 
   def crudRouteTuple[E, T <: Table[E]](nome: String, dao: GenericDaoRestInterface[E, T, (Long, Long)])(implicit fmt: RootJsonFormat[E]): Route =
     path(nome / LongNumber / LongNumber) { (entityIdA: Long, entityIdB: Long) =>
       val entityId = (entityIdA, entityIdB)
       (get & rejectEmptyResponse) { ctx => ctx.complete(dao.get(entityId)) } ~
-        (put & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.put(entityId, newCoffee)) } ~
-        delete { ctx => ctx.complete(dao.delete(entityId)) }
+      (put & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.put(entityId, newCoffee)) } ~
+      delete { ctx => ctx.complete(dao.delete(entityId)) }
     } ~
-      path(nome) {
-        get { ctx => ctx.complete(dao.listAll()) } ~
-          (post & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.post(newCoffee)) }
-      }
+    path(nome) {
+      get { ctx => ctx.complete(dao.listAll()) } ~
+      (post & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.post(newCoffee)) }
+    }
 
   implicit val askTimeout: Timeout = 5.seconds
 
-  val route =
+  val appRoutes =
     crudRoute[Coffee, Coffees]("coffee", CoffeeRestInterface) ~
-      crudRouteTuple[Inventory, Inventories]("inv", InventoryRestInterface) ~
-      path("inv" / LongNumber) { uid: Long =>
-        (get & rejectEmptyResponse) { ctx => ctx.complete(InventoryDao.fetchInventory(uid).map(_.toList)) }
-      } ~
-      crudRoute[Recipe, Recipes]("recipe", RecipeRestInterface) ~
-      crudRoute[Ingredient, Ingredients]("ingredients", IngredientRestInterface) ~
-      pathPrefix("api" / LongNumber) { uid: Long =>
-        val usr = userActors(uid)
-        (pathEnd & get) { ctx =>
+    crudRouteTuple[Inventory, Inventories]("inv", InventoryRestInterface) ~
+    path("inv" / LongNumber) { uid: Long =>
+      (get & rejectEmptyResponse) { ctx => ctx.complete(InventoryDao.fetchInventory(uid).map(_.toList)) }
+    } ~
+    crudRoute[Recipe, Recipes]("recipe", RecipeRestInterface) ~
+    crudRoute[Ingredient, Ingredients]("ingredients", IngredientRestInterface) ~
+    pathPrefix("api" / LongNumber) { uid: Long =>
+      val usr = userActors(uid)
+      (pathEnd & get) { ctx =>
           ctx.complete((usr ? ListCmd).mapTo[CoolUserState])
         } ~ (path("craft") & post & entity(as[List[Long]])) { invIds => ctx =>
           ctx.complete((usr ? CraftCmd(invIds.toSet)) flatMap { x => (usr ? ListCmd).mapTo[CoolUserState] })
@@ -80,7 +82,27 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
         } ~ (path("mine") & post) { ctx =>
           ctx.complete((usr ? MineCmd) flatMap { x => (usr ? ListCmd).mapTo[CoolUserState] })
         }
-      }
+    }
+
+  val optionsSupport = {
+    options {
+      complete("")
+    }
+  }
+
+  val corsHeaders = List(
+    RawHeader("Access-Control-Allow-Origin", "*"),
+    RawHeader("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS, DELETE"),
+    RawHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
+  )
+
+  val corsRoutes = {
+    respondWithHeaders(corsHeaders) {
+      optionsSupport ~ appRoutes
+    }
+  }
+
+  val route = corsRoutes
 
   val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
 }

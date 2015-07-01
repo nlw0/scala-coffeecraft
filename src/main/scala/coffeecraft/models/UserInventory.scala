@@ -34,7 +34,7 @@ class UserInventory(userId: Long) extends Actor {
 
   def withInventory(money: Double, inventory: Map[Long, Coffee]): Receive = {
     case ListCmd =>
-      sender ! CoolUserState(money, (0L to (if (inventory.isEmpty) 0L else inventory.keys.max)) map inventory.get)
+      sender ! CoolUserState(money, inventory map { case (k, v) => InventoryItem(k, v) } toList)
 
     case MineCmd =>
       val newMoney = if (money < 2.0) money else roundMoney(money - 2.0)
@@ -80,6 +80,8 @@ object UserInventory {
 
   case class UserState(money: Double, inventory: Map[Long, Coffee])
 
-  case class CoolUserState(money: Double, inventory: Seq[Option[Coffee]])
+  case class InventoryItem(index: Long, item: Coffee)
+
+  case class CoolUserState(money: Double, inventory: Seq[InventoryItem])
 
 }
