@@ -12,7 +12,7 @@ import akka.util.Timeout
 import coffeecraft.InitDB
 import coffeecraft.dao._
 import coffeecraft.models.UserInventory._
-import coffeecraft.models._
+import coffeecraft.models.{CraftingProcessor, _}
 import slick.driver.H2Driver.api._
 import spray.json._
 
@@ -35,6 +35,8 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
 
   implicit val system = ActorSystem("my-system")
   implicit val materializer = ActorFlowMaterializer()
+
+  val craftingProcessor = system.actorOf(Props(classOf[CraftingProcessor]), "crafting-processor")
 
   val userActors = Map(102L -> system.actorOf(Props(classOf[UserInventory], 102L)))
 

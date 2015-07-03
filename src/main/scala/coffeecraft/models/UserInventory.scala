@@ -2,6 +2,7 @@ package coffeecraft.models
 
 import akka.actor.{Actor, PoisonPill}
 import coffeecraft.dao.InventoryDao
+import coffeecraft.models.CraftingProcessor.{ProcessorCraftCmd, ProcessorCraftReply, ProcessorMineCmd, ProcessorMineReply}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
@@ -10,6 +11,8 @@ import scala.util.{Failure, Success}
 class UserInventory(userId: Long) extends Actor {
 
   import coffeecraft.models.UserInventory._
+
+  val craftingProcessor = context.actorSelection("../crafting-processor")
 
   InventoryDao.fetchInventory(userId) onComplete {
     case Success(inventory) =>
@@ -37,17 +40,22 @@ class UserInventory(userId: Long) extends Actor {
       sender ! CoolUserState(money, inventory map { case (k, v) => InventoryItem(k, v) } toList)
 
     case MineCmd =>
-      val newMoney = if (money < 2.0) money else roundMoney(money - 2.0)
-      val mineResult = CraftingProcessor.mine(forFree = money < 2.0)
-      context.become(withInventory(newMoney, inventory plus mineResult))
-      sender ! (if (mineResult.isDefined) ActionACK else ActionNACK)
+      craftingProcessor ! ProcessorMineCmd(sender, forFree = money < 2.0)
 
-    case CraftCmd(is) =>
-      val validIndices = is forall inventory.contains
-      val ingredients = CoffeeIdSet(if (validIndices) is map (inventory(_).id.get) else Set())
-      val craftResult = CraftingProcessor.craft(ingredients)
-      if (craftResult.isDefined) context.become(withInventory(money, (inventory plus craftResult) -- is))
-      sender ! (if (validIndices && craftResult.isDefined) ActionACK else ActionNACK)
+    case ProcessorMineReply(who, mineResult) =>
+      val newMoney = if (money < 2.0) money else roundMoney(money - 2.0)
+      context.become(withInventory(newMoney, inventory plus mineResult))
+      who ! (if (mineResult.isDefined) ActionACK else ActionNACK)
+
+    case CraftCmd(ingredientIndices) =>
+      val validIndices = ingredientIndices forall inventory.contains
+      val ingredients = CoffeeIdSet(if (validIndices) ingredientIndices map (inventory(_).id.get) else Set())
+      craftingProcessor ! ProcessorCraftCmd(sender, ingredients, ingredientIndices)
+
+    case ProcessorCraftReply(who, craftResult, ingredientIndices) =>
+      if (craftResult.isDefined)
+        context.become(withInventory(money, (inventory plus craftResult) -- ingredientIndices))
+      who ! (if (craftResult.isDefined) ActionACK else ActionNACK)
 
     case SellCmd(is) =>
       val validIndices = is forall inventory.contains

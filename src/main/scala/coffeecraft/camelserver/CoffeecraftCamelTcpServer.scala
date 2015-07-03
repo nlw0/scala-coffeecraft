@@ -13,6 +13,8 @@ class CoffeecraftCamelTcpServer extends Consumer {
 
   val invActor = context.actorOf(Props(classOf[UserInventory], 102L))
 
+  val craftingProcessor = context.actorOf(Props(classOf[CraftingProcessor]), "crafting-processor")
+
   def receive = {
     case msg: CamelMessage =>
       invActor forward MessageTranslator(msg.bodyAs[String])
