@@ -100,11 +100,11 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
 
   val corsRoutes = {
     respondWithHeaders(corsHeaders) {
-      optionsSupport ~ appRoutes
+      appRoutes ~ optionsSupport
     }
   }
 
   val route = corsRoutes
 
-  val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+  val bindingFuture = Http().bindAndHandle(route, "::0", 8080)
 }
