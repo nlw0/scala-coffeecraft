@@ -40,15 +40,19 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
 
   val userActors = Map(102L -> system.actorOf(Props(classOf[UserInventory], 102L)))
 
+  val optionsSupport = options { ctx => ctx.complete("") }
+
   def crudRoute[E, T <: Table[E]](nome: String, dao: GenericDaoRestInterface[E, T, Long])(implicit fmt: RootJsonFormat[E]): Route =
     path(nome / LongNumber) { entityId: Long =>
       (get & rejectEmptyResponse) { ctx => ctx.complete(dao.get(entityId)) } ~
       (put & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.put(entityId, newCoffee)) } ~
-      delete { ctx => ctx.complete(dao.delete(entityId)) }
+      delete { ctx => ctx.complete(dao.delete(entityId)) } ~
+      optionsSupport
     } ~
     path(nome) {
       get { ctx => ctx.complete(dao.listAll()) } ~
-      (post & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.post(newCoffee)) }
+      (post & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.post(newCoffee)) } ~
+      optionsSupport
     }
 
   implicit val askTimeout: Timeout = 5.seconds
@@ -61,20 +65,18 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
       val usr = userActors(uid)
       (pathEnd & get) { ctx =>
           ctx.complete((usr ? ListCmd).mapTo[CoolUserState])
-        } ~ (path("craft") & post & entity(as[List[Long]])) { invIds => ctx =>
+        } ~
+      (path("craft") & post & entity(as[List[Long]])) { invIds => ctx =>
           ctx.complete((usr ? CraftCmd(invIds.toSet)) flatMap { x => (usr ? ListCmd).mapTo[CoolUserState] })
-        } ~ (path("sell") & post & entity(as[List[Long]])) { invIds => ctx =>
+        } ~
+      (path("sell") & post & entity(as[List[Long]])) { invIds => ctx =>
           ctx.complete((usr ? SellCmd(invIds.toSet)) flatMap { x => (usr ? ListCmd).mapTo[CoolUserState] })
-        } ~ (path("mine") & post) { ctx =>
+        } ~
+      (path("mine") & post) { ctx =>
           ctx.complete((usr ? MineCmd) flatMap { x => (usr ? ListCmd).mapTo[CoolUserState] })
-        }
+        } ~
+      (pathEnd | path("craft") | path("sell") | path("mine")) { optionsSupport }
     }
-
-  val optionsSupport = {
-    options {
-      complete("")
-    }
-  }
 
   val corsHeaders = List(
     RawHeader("Access-Control-Allow-Origin", "*"),
@@ -84,7 +86,7 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
 
   val corsRoutes = {
     respondWithHeaders(corsHeaders) {
-      appRoutes ~ optionsSupport
+      appRoutes
     }
   }
 
