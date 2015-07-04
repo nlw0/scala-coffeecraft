@@ -13,15 +13,9 @@ class CraftingProcessor extends Actor {
 
   import context.dispatcher
 
-  RecipeDao.assembleCraftFunction().onSuccess {
-    case newCraftingFunction: Map[CoffeeIdSet, Coffee] =>
-      context.become(processor(newCraftingFunction))
-      self ! UpdateCraftingFunctionTicker
-  }
+  self ! UpdateCraftingFunctionTicker
 
-  def receive = {
-    case _ =>
-  }
+  def receive = processor(Map())
 
   def processor(craftingFunction: Map[CoffeeIdSet, Coffee]): Receive = {
     case ProcessorCraftCmd(who, ingredients, indices) =>
@@ -40,7 +34,7 @@ class CraftingProcessor extends Actor {
       }
 
     case UpdateCraftingFunctionTicker =>
-      pipe(RecipeDao.assembleCraftFunction() map UpdateCraftingFunction) to self
+      pipe(RecipeDao.getCraftFunction() map UpdateCraftingFunction) to self
       context.system.scheduler.scheduleOnce(1 second, self, UpdateCraftingFunctionTicker)
 
     case UpdateCraftingFunction(newCraftingFunction: Map[CoffeeIdSet, Coffee]) =>

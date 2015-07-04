@@ -15,7 +15,7 @@ object RecipeDao extends GenericDao[Recipe, Recipes, Long] {
 
   override def filterQuery(id: Long): Query[Recipes, Recipe, Seq] = table.filter(_.id === id)
 
-  def assembleCraftFunction() = {
+  def getCraftFunction() = {
     val ingF = RecipeDao.recIngredients
     val outF = RecipeDao.recOutcomes
     for (ing <- ingF; out <- outF) yield out map { case (k, v) => CoffeeIdSet(ing(k).toSet) -> v } toMap
