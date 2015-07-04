@@ -51,29 +51,13 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
       (post & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.post(newCoffee)) }
     }
 
-  def crudRouteTuple[E, T <: Table[E]](nome: String, dao: GenericDaoRestInterface[E, T, (Long, Long)])(implicit fmt: RootJsonFormat[E]): Route =
-    path(nome / LongNumber / LongNumber) { (entityIdA: Long, entityIdB: Long) =>
-      val entityId = (entityIdA, entityIdB)
-      (get & rejectEmptyResponse) { ctx => ctx.complete(dao.get(entityId)) } ~
-      (put & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.put(entityId, newCoffee)) } ~
-      delete { ctx => ctx.complete(dao.delete(entityId)) }
-    } ~
-    path(nome) {
-      get { ctx => ctx.complete(dao.listAll()) } ~
-      (post & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.post(newCoffee)) }
-    }
-
   implicit val askTimeout: Timeout = 5.seconds
 
   val appRoutes =
     crudRoute[Coffee, Coffees]("coffee", CoffeeRestInterface) ~
-    crudRouteTuple[Inventory, Inventories]("inv", InventoryRestInterface) ~
-    path("inv" / LongNumber) { uid: Long =>
-      (get & rejectEmptyResponse) { ctx => ctx.complete(InventoryDao.fetchInventory(uid).map(_.toList)) }
-    } ~
     crudRoute[Recipe, Recipes]("recipe", RecipeRestInterface) ~
     crudRoute[Ingredient, Ingredients]("ingredients", IngredientRestInterface) ~
-    pathPrefix("api" / LongNumber) { uid: Long =>
+    pathPrefix("user" / LongNumber) { uid: Long =>
       val usr = userActors(uid)
       (pathEnd & get) { ctx =>
           ctx.complete((usr ? ListCmd).mapTo[CoolUserState])
