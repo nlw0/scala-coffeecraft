@@ -1,5 +1,14 @@
 package coffeecraft.server
 
+import akka.actor._
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import akka.http.scaladsl.model.headers.RawHeader
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.{PathMatcher1, Route}
+import akka.pattern.ask
+import akka.stream.ActorMaterializer
+import akka.util.Timeout
 import coffeecraft.InitDB
 import coffeecraft.dao._
 import coffeecraft.models.UserInventory._
