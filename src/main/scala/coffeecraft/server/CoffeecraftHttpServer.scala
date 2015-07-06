@@ -1,14 +1,5 @@
 package coffeecraft.server
 
-import akka.actor._
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
-import akka.pattern.ask
-import akka.stream.ActorFlowMaterializer
-import akka.util.Timeout
 import coffeecraft.InitDB
 import coffeecraft.dao._
 import coffeecraft.models.UserInventory._
@@ -34,7 +25,7 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
   InitDB()
 
   implicit val system = ActorSystem("my-system")
-  implicit val materializer = ActorFlowMaterializer()
+  implicit val materializer = ActorMaterializer()
 
   val craftingProcessor = system.actorOf(Props(classOf[CraftingProcessor]), "crafting-processor")
 
@@ -57,12 +48,13 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
 
   implicit val askTimeout: Timeout = 5.seconds
 
+  val CoffeecraftUser: PathMatcher1[ActorRef] = LongNumber flatMap { uid => userActors.get(uid) }
+
   val appRoutes =
     crudRoute[Coffee, Coffees]("coffee", CoffeeRestInterface) ~
     crudRoute[Recipe, Recipes]("recipe", RecipeRestInterface) ~
     crudRoute[Ingredient, Ingredients]("ingredients", IngredientRestInterface) ~
-    pathPrefix("user" / LongNumber) { uid: Long =>
-      val usr = userActors(uid)
+    pathPrefix("user" / CoffeecraftUser) { usr: ActorRef =>
       (pathEnd & get) { ctx =>
           ctx.complete((usr ? ListCmd).mapTo[CoolUserState])
         } ~
