@@ -18,8 +18,10 @@ import spray.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
-trait MyMarshalling extends DefaultJsonProtocol with SprayJsonSupport {
+
+trait CoffeecraftMarshalling extends DefaultJsonProtocol with SprayJsonSupport {
   implicit val coffeeFmt = jsonFormat3(Coffee)
   implicit val inventoryFmt = jsonFormat3(Inventory)
   implicit val recipeFmt = jsonFormat2(Recipe)
@@ -29,7 +31,9 @@ trait MyMarshalling extends DefaultJsonProtocol with SprayJsonSupport {
 }
 
 
-object CoffeecraftHttpServer extends App with MyMarshalling {
+object CoffeecraftHttpServer extends App with CoffeecraftMarshalling {
+
+  implicit val askTimeout: Timeout = 5 seconds
 
   InitDB()
 
@@ -38,7 +42,7 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
 
   val craftingProcessor = system.actorOf(Props(classOf[CraftingProcessor]), "crafting-processor")
 
-  val userActors = Map(102L -> system.actorOf(Props(classOf[UserInventory], 102L)))
+  var userActors = Map[Long, ActorRef]()
 
   val optionsSupport = options { ctx => ctx.complete("") }
 
@@ -48,36 +52,39 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
       (put & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.put(entityId, newCoffee)) } ~
       delete { ctx => ctx.complete(dao.delete(entityId)) } ~
       optionsSupport
-    } ~
-    path(nome) {
+    } ~ path(nome) {
       get { ctx => ctx.complete(dao.listAll()) } ~
       (post & entity(as[E])) { newCoffee => ctx => ctx.complete(dao.post(newCoffee)) } ~
       optionsSupport
     }
 
-  implicit val askTimeout: Timeout = 5.seconds
+  def uidIsValid(uid: Long) = 100 <= uid && uid < 200
 
-  val CoffeecraftUser: PathMatcher1[ActorRef] = LongNumber flatMap { uid => userActors.get(uid) }
+  val CoffeecraftUser: PathMatcher1[ActorRef] = LongNumber flatMap { uid =>
+    if (!uidIsValid(uid)) None
+    else {
+      if (!(userActors contains uid))
+        userActors += uid -> system.actorOf(Props(classOf[UserInventory], uid))
+      userActors.get(uid)
+    }
+  }
 
-  val appRoutes =
+  val crudRoutes =
     crudRoute[Coffee, Coffees]("coffee", CoffeeRestInterface) ~
     crudRoute[Recipe, Recipes]("recipe", RecipeRestInterface) ~
-    crudRoute[Ingredient, Ingredients]("ingredients", IngredientRestInterface) ~
-    pathPrefix("user" / CoffeecraftUser) { usr: ActorRef =>
-      (pathEnd & get) { ctx =>
-          ctx.complete((usr ? ListCmd).mapTo[CoolUserState])
-        } ~
-      (path("craft") & post & entity(as[List[Long]])) { invIds => ctx =>
-          ctx.complete((usr ? CraftCmd(invIds.toSet)) flatMap { x => (usr ? ListCmd).mapTo[CoolUserState] })
-        } ~
-      (path("sell") & post & entity(as[List[Long]])) { invIds => ctx =>
-          ctx.complete((usr ? SellCmd(invIds.toSet)) flatMap { x => (usr ? ListCmd).mapTo[CoolUserState] })
-        } ~
-      (path("mine") & post) { ctx =>
-          ctx.complete((usr ? MineCmd) flatMap { x => (usr ? ListCmd).mapTo[CoolUserState] })
-        } ~
-      (pathEnd | path("craft") | path("sell") | path("mine")) { optionsSupport }
-    }
+    crudRoute[Ingredient, Ingredients]("ingredients", IngredientRestInterface)
+
+  val userRoutes = pathPrefix("user" / CoffeecraftUser) { usr: ActorRef =>
+    (pathEnd & get) { ctx =>
+      ctx.complete((usr ? ListCmd).mapTo[CoolUserState]) } ~
+    (path("craft") & post & entity(as[List[Long]])) { invIds => ctx =>
+      ctx.complete((usr ? CraftCmd(invIds.toSet)) flatMap { x => (usr ? ListCmd).mapTo[CoolUserState] }) } ~
+    (path("sell") & post & entity(as[List[Long]])) { invIds => ctx =>
+      ctx.complete((usr ? SellCmd(invIds.toSet)) flatMap { x => (usr ? ListCmd).mapTo[CoolUserState] }) } ~
+    (path("mine") & post) { ctx =>
+      ctx.complete((usr ? MineCmd) flatMap { x => (usr ? ListCmd).mapTo[CoolUserState] }) } ~
+    (pathEnd | path("craft") | path("sell") | path("mine")) { optionsSupport }
+  }
 
   val corsHeaders = List(
     RawHeader("Access-Control-Allow-Origin", "*"),
@@ -85,10 +92,8 @@ object CoffeecraftHttpServer extends App with MyMarshalling {
     RawHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
   )
 
-  val corsRoutes = {
-    respondWithHeaders(corsHeaders) {
-      appRoutes
-    }
+  val corsRoutes = respondWithHeaders(corsHeaders) {
+    crudRoutes ~ userRoutes
   }
 
   val route = corsRoutes

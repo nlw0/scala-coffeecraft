@@ -6,6 +6,7 @@ import coffeecraft.dao.{CoffeeDao, RecipeDao}
 import coffeecraft.models.CraftingProcessor._
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 case class CoffeeIdSet(value: Set[Long]) extends AnyVal
 
@@ -27,7 +28,8 @@ class CraftingProcessor extends Actor {
         case 0 =>
           sender ! ProcessorMineReply(who, None)
         case 1 =>
-          pipe(CoffeeDao.fetchOneById(1L) map (ProcessorMineReply(who, _))) to sender
+          val newId = scala.util.Random.nextInt(3).toLong + 1L
+          pipe(CoffeeDao.fetchOneById(newId) map (ProcessorMineReply(who, _))) to sender
         case _ =>
           val newId = scala.util.Random.nextInt(idLimit).toLong + 1L
           pipe(CoffeeDao.fetchOneById(newId) map (ProcessorMineReply(who, _))) to sender
