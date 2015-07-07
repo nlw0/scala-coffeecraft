@@ -3,7 +3,7 @@ package coffeecraft.camelserver
 import akka.actor.Props
 import akka.camel.{CamelMessage, Consumer}
 import coffeecraft.InitDB
-import coffeecraft.models._
+import coffeecraft.domain.{CraftingProcessor, UserInventory}
 
 
 class CoffeecraftCamelTcpServer extends Consumer {

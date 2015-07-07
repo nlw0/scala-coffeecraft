@@ -1,6 +1,6 @@
-package coffeecraft.models
+package coffeecraft.camelserver
 
-import coffeecraft.models.UserInventory._
+import coffeecraft.domain.UserInventory.{CraftCmd, ListCmd, MineCmd, SellCmd}
 
 object MessageTranslator {
   def apply(input: String) = input.split(" ").toList match {

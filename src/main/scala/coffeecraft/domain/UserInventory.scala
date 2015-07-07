@@ -1,8 +1,9 @@
-package coffeecraft.models
+package coffeecraft.domain
 
 import akka.actor.{Actor, PoisonPill}
 import coffeecraft.dao.InventoryDao
-import coffeecraft.models.CraftingProcessor.{ProcessorCraftCmd, ProcessorCraftReply, ProcessorMineCmd, ProcessorMineReply}
+import coffeecraft.models.Coffee
+import CraftingProcessor.{ProcessorCraftCmd, ProcessorCraftReply, ProcessorMineCmd, ProcessorMineReply}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
@@ -10,12 +11,13 @@ import scala.util.{Failure, Success}
 
 class UserInventory(userId: Long) extends Actor {
 
-  import coffeecraft.models.UserInventory._
+  import UserInventory._
 
   val craftingProcessor = context.actorSelection("../crafting-processor")
 
   InventoryDao.fetchInventory(userId) onComplete {
     case Success(inventory) =>
+      println("Loaded inventory")
       context.become(withInventory(10.0, inventory.toMap))
     case Failure(e) =>
       println("Cannot initialize actor")
@@ -23,7 +25,8 @@ class UserInventory(userId: Long) extends Actor {
   }
 
   def receive = {
-    case _ =>
+    case ListCmd =>
+      sender ! CoolUserState(0.0, Map[Long, Coffee]() map { case (k, v) => InventoryItem(k, v) } toList)
   }
 
   implicit class InventoryMethods(inventory: Map[Long, Coffee]) {

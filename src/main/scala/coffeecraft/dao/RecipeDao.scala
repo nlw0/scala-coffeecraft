@@ -1,5 +1,6 @@
 package coffeecraft.dao
 
+import coffeecraft.domain.CoffeeIdSet
 import coffeecraft.models._
 import slick.driver.H2Driver.api._
 

@@ -11,8 +11,9 @@ import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import coffeecraft.InitDB
 import coffeecraft.dao._
-import coffeecraft.models.UserInventory._
-import coffeecraft.models.{CraftingProcessor, _}
+import coffeecraft.domain.{CraftingProcessor, UserInventory}
+import UserInventory._
+import coffeecraft.models.{_}
 import slick.driver.H2Driver.api._
 import spray.json._
 

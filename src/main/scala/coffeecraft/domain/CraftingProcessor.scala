@@ -1,9 +1,9 @@
-package coffeecraft.models
+package coffeecraft.domain
 
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.pipe
 import coffeecraft.dao.{CoffeeDao, RecipeDao}
-import coffeecraft.models.CraftingProcessor._
+import coffeecraft.models.Coffee
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -11,6 +11,8 @@ import scala.language.postfixOps
 case class CoffeeIdSet(value: Set[Long]) extends AnyVal
 
 class CraftingProcessor extends Actor {
+
+  import CraftingProcessor._
 
   import context.dispatcher
 
