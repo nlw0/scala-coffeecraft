@@ -6,6 +6,7 @@ import coffeecraft.models.Coffee
 import CraftingProcessor.{ProcessorCraftCmd, ProcessorCraftReply, ProcessorMineCmd, ProcessorMineReply}
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 

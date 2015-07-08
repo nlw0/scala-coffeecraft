@@ -5,6 +5,7 @@ import coffeecraft.models._
 import slick.driver.H2Driver.api._
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.language.postfixOps
 
 
 object RecipeDao extends GenericDao[Recipe, Recipes, Long] {
@@ -16,7 +17,7 @@ object RecipeDao extends GenericDao[Recipe, Recipes, Long] {
 
   override def filterQuery(id: Long): Query[Recipes, Recipe, Seq] = table.filter(_.id === id)
 
-  def getCraftFunction() = {
+  def getCraftFunction = {
     val ingF = RecipeDao.recIngredients
     val outF = RecipeDao.recOutcomes
     for (ing <- ingF; out <- outF) yield out map { case (k, v) => CoffeeIdSet(ing(k).toSet) -> v } toMap
